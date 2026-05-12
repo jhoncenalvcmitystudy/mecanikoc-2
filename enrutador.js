@@ -1,6 +1,7 @@
 import { renderHome } from './modules/home.js';
-import { renderLogin, renderRegistro } from './modules/autenticacion/auth.js';
+import { renderLogin } from './modules/autenticacion/auth.js';
 import { renderInventario } from './modules/productos/inventario.js';
+import { renderRegistro} from './modules/autenticacion/register.js';
 import { renderCarrito } from './modules/carrito/carrito.js';
 import { renderPerfil } from './modules/usuario/perfil.js';
 

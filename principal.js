@@ -2,6 +2,7 @@ import { router } from './enrutador.js';
 
 const renderLayout = () => {
     const app = document.getElementById('app');
+    
     app.innerHTML = `
         <div class="app-container">
             <header class="header">
