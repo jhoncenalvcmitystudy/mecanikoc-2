@@ -11,7 +11,7 @@ const renderLayout = () => {
                 </a>
                 <div class="header-nav">
                     <div class="search-bar">
-                    <i clase="fa-sólido fa-carro-compras"></i>
+                    
                         <span style="color: var(--text-muted)"></span>
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="text" id="global-search" placeholder="Buscar producto...">
@@ -35,7 +35,10 @@ const renderLayout = () => {
 };
 
 export const updateNav = () => {
-    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const user = JSON.parse(
+    localStorage.getItem('currentUser')
+    || 'null'
+);
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
     
     const navUser = document.getElementById('nav-user');
@@ -66,3 +69,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // Eventos personalizados para actualizar la barra de navegación dinámicamente
 window.addEventListener('cart-updated', updateNav);
 window.addEventListener('user-updated', updateNav);
+
+
+
+const currentUser =
+JSON.parse(
+    localStorage.getItem(
+        "currentUser"
+    ) || "null"
+);
+
+console.log(currentUser);
+
+window.addEventListener(
+    "hashchange",
+    router
+);

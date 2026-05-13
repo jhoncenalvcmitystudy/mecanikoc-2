@@ -40,3 +40,66 @@ export async function registrarUsuario(
   return user;
 
 }
+
+
+
+
+
+
+export async function iniciarSesion(
+    email,
+    password
+) {
+
+    const { data, error } =
+        await supabase.auth.signInWithPassword({
+
+            email,
+            password
+
+        });
+
+    if (error) {
+
+        throw error;
+
+    }
+
+    const authUser =
+        data.user;
+
+    const {
+        data: usuarioDB,
+        error: dbError
+    } = await supabase
+        .from("usuarios")
+        .select("*")
+        .eq(
+            "auth_id",
+            authUser.id
+        )
+        .single();
+
+    if (dbError) {
+
+        throw dbError;
+
+    }
+
+    return usuarioDB;
+
+}
+
+
+
+export async function cerrarSesion() {
+
+    await supabase.auth.signOut();
+
+    localStorage.removeItem(
+        "currentUser"
+    );
+
+}
+
+
