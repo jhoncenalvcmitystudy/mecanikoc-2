@@ -1,0 +1,60 @@
+<div class="dashboard-admin">
+    <div class="dashboard-header">
+        <h1>Panel de Administración</h1>
+        <p id="admin-bienvenida"></p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card border-primary">
+            <span class="stat-label">Usuarios</span>
+            <span class="stat-number" id="stat-usuarios">0</span>
+        </div>
+
+        <div class="stat-card border-blue">
+            <span class="stat-label">Productos</span>
+            <span class="stat-number" id="stat-productos">0</span>
+        </div>
+
+        <div class="stat-card border-orange">
+            <span class="stat-label">Pedidos</span>
+            <span class="stat-number" id="stat-pedidos">0</span>
+        </div>
+
+        <div class="stat-card border-red">
+            <span class="stat-label">Ventas</span>
+            <span class="stat-number" id="stat-ventas">$0</span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="usuarios">
+            Usuarios
+        </button>
+
+        <button class="admin-tab" data-tab="pedidos">
+            Pedidos
+        </button>
+
+        <button class="admin-tab" data-tab="categorias">
+            Categorías
+        </button>
+
+        <button class="admin-tab" data-tab="proveedores">
+            Proveedores
+        </button>
+
+        <button class="admin-tab" data-tab="productos">
+            Productos
+        </button>
+
+        <button class="admin-tab" data-tab="movimientos">
+            Movimientos
+        </button>
+    </div>
+
+    <!-- Contenido -->
+    <div id="admin-tab-content" class="admin-content"></div>
+
+</div>
