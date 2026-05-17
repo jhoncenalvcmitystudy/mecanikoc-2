@@ -1,0 +1,33 @@
+<div class="auth-container">
+    <div class="auth-image"></div>
+    <div class="auth-form-wrapper">
+        <a href="#/home" style="color: var(--text-muted); margin-bottom: 2rem; display: inline-block;">
+            ← Volver al inicio
+        </a>
+        <h2>Iniciar Sesión</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Ingresa tus credenciales para continuar.</p>
+
+        <div id="login-error" class="alert-error" style="display: none;"></div>
+
+        <form id="login-form">
+            <div class="input-group">
+                <label for="login-email">Correo electrónico</label>
+                <input type="email" id="login-email" class="input-control"
+                    placeholder="correo@ejemplo.com" required>
+            </div>
+            <div class="input-group">
+                <label for="login-password">Contraseña</label>
+                <input type="password" id="login-password" class="input-control"
+                    placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-login"
+                style="width: 100%; margin-top: 1rem; padding: 1rem;">
+                Ingresar
+            </button>
+            <p style="margin-top: 2rem; text-align: center; color: var(--text-muted);">
+                ¿No tienes cuenta?
+                <a href="#/registro" style="color: var(--primary-color); font-weight: 600;">Regístrate</a>
+            </p>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,38 @@
+<div style="max-width: 1200px; margin: 0 auto;">
+
+    <!-- Header -->
+    <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Panel de Proveedor</h1>
+        <p id="prov-bienvenida" style="color: var(--text-muted);"></p>
+    </div>
+
+    <!-- Stats -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem;">
+        <div class="stat-card border-primary">
+            <span class="stat-label">Productos en Catálogo</span>
+            <span class="stat-number" id="prov-stat-productos">0</span>
+        </div>
+        <div class="stat-card border-blue">
+            <span class="stat-label">Stock Total</span>
+            <span class="stat-number" id="prov-stat-stock">0</span>
+        </div>
+        <div class="stat-card border-orange">
+            <span class="stat-label">Movimientos Registrados</span>
+            <span class="stat-number" id="prov-stat-movimientos">0</span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem;">
+        <button class="prov-tab active" data-tab="productos">
+            <i class="fa-solid fa-boxes-stacked"></i> Productos
+        </button>
+        <button class="prov-tab" data-tab="movimientos">
+            <i class="fa-solid fa-clock-rotate-left"></i> Movimientos
+        </button>
+    </div>
+
+    <!-- Contenido de tab -->
+    <div id="prov-tab-content" class="admin-content"></div>
+
+</div>

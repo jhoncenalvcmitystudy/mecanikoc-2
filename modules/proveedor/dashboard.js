@@ -1,246 +1,271 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Dashboard Proveedor — Panel de proveedor (Supabase)
+// Dashboard Proveedor — Solo su sucursal (editable) + global (lectura)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-import { supabase } from "../../core/supabaseClient.js";
-import { obtenerUsuarioLocal } from "../autenticacion/authService.js";
+import { obtenerUsuarioLocal } from '../autenticacion/authService.js';
+import {
+    obtenerProductosConInventario,
+    obtenerMovimientosInventario,
+    actualizarStock,
+    obtenerStockActual,
+    registrarMovimientoInventario
+} from '../../services/productosService.js';
+import { obtenerSucursales } from '../../services/sucursalesService.js';
+import { spinner, errorState } from '../../ui/components.js';
 
 export const renderDashboardProveedor = async (container) => {
     const user = obtenerUsuarioLocal();
-    // Permitir acceso a Proveedor (3) y Admin (2)
     if (!user || (user.rol_id !== 3 && user.rol_id !== 2)) {
-        window.location.hash = "#/home";
+        window.location.hash = '#/home';
         return;
     }
 
-    container.innerHTML = `
-        <div style="text-align: center; padding: 4rem;">
-            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <p style="margin-top: 1rem; color: var(--text-muted);">Cargando panel de proveedor...</p>
-        </div>
-        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
-    `;
+    container.innerHTML = spinner('Cargando panel de proveedor...');
 
     try {
-        // Cargar todos los productos (sin filtrar por proveedor_id, ya que no hay relación compleja)
-        const { data: productosProveedor } = await supabase
-            .from("productos")
-            .select("*, categorias(nombre), inventario(id, stock)")
-            .order("id", { ascending: false });
+        const html = await fetch('/templates/proveedor-dashboard.html').then(r => r.text());
+        container.innerHTML = html;
 
-        const prods = productosProveedor || [];
+        const [prods, movimientos, sucursales] = await Promise.all([
+            obtenerProductosConInventario(),
+            obtenerMovimientosInventario(30),
+            obtenerSucursales()
+        ]);
 
-        // Movimientos de inventario
-        const { data: movs } = await supabase
-            .from("movimientos_inventario")
-            .select("*, productos(nombre)")
-            .order("id", { ascending: false })
-            .limit(30);
+        const miSucursalId   = user.sucursal_id;
+        const miSucursal     = sucursales.find(s => s.id === miSucursalId);
 
-        const movimientos = movs || [];
+        // Stats filtradas a la propia sucursal
+        const miInventario   = prods.flatMap(p => p.inventario.filter(i => i.sucursal_id === miSucursalId));
+        const miStock        = miInventario.reduce((a, i) => a + i.stock, 0);
+        const misMov         = movimientos.filter(m => m.sucursal_id === miSucursalId);
 
-        const totalStock = prods.reduce((acc, p) => {
-            const stock = p.inventario ? p.inventario.reduce((a, i) => a + (i.stock || 0), 0) : 0;
-            return acc + stock;
-        }, 0);
+        document.getElementById('prov-bienvenida').innerHTML = `
+            ${miSucursal
+                ? `Tu sede: <strong>${miSucursal.nombre}</strong> · ${miSucursal.ubicacion}`
+                : `<span style="color:#ef4444;">Sin sede asignada — contacta al administrador</span>`}`;
 
-        container.innerHTML = `
-            <div style="max-width: 1200px; margin: 0 auto;">
-                <div style="margin-bottom: 2rem;">
-                    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Panel de Proveedor</h1>
-                    <p style="color: var(--text-muted);">Bienvenido, ${user.nombre}. Gestiona los productos e inventario.</p>
-                </div>
+        document.getElementById('prov-stat-productos').textContent   = prods.length;
+        document.getElementById('prov-stat-stock').textContent       = miStock;
+        document.getElementById('prov-stat-movimientos').textContent = misMov.length;
 
-                <!-- Stats -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem;">
-                    <div style="background: var(--card-bg); padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-left: 4px solid var(--primary-color);">
-                        <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Productos en Catálogo</div>
-                        <div style="font-size: 2.5rem; font-weight: 800;">${prods.length}</div>
-                    </div>
-                    <div style="background: var(--card-bg); padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-left: 4px solid #3b82f6;">
-                        <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Stock Total</div>
-                        <div style="font-size: 2.5rem; font-weight: 800;">${totalStock}</div>
-                    </div>
-                    <div style="background: var(--card-bg); padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-left: 4px solid #d97706;">
-                        <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Movimientos Registrados</div>
-                        <div style="font-size: 2.5rem; font-weight: 800;">${movimientos.length}</div>
-                    </div>
-                </div>
+        const tabContent = document.getElementById('prov-tab-content');
 
-                <!-- Tabs -->
-                <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem;">
-                    <button class="prov-tab active" data-tab="productos" style="padding: 0.6rem 1.5rem; background: var(--primary-color); color: white; border: 1px solid var(--primary-color); border-radius: var(--radius-full); cursor: pointer; font-weight: 600; font-family: var(--font-family); transition: var(--transition);">
-                        <i class="fa-solid fa-boxes-stacked"></i> Productos
-                    </button>
-                    <button class="prov-tab" data-tab="movimientos" style="padding: 0.6rem 1.5rem; background: white; color: var(--text-muted); border: 1px solid var(--border-color); border-radius: var(--radius-full); cursor: pointer; font-weight: 500; font-family: var(--font-family); transition: var(--transition);">
-                        <i class="fa-solid fa-clock-rotate-left"></i> Movimientos
-                    </button>
-                </div>
+        // ── Modo de vista: 'mine' (editable) | 'all' (solo lectura) ──
+        let modoVista = 'mine';
 
-                <div id="prov-tab-content" style="background: var(--card-bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); overflow: hidden;"></div>
+        const renderToggle = () => `
+            <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem;">
+                <button class="btn ${modoVista === 'mine' ? 'btn-primary' : 'btn-outline'}" id="btn-ver-mine"
+                    style="font-size:0.9rem; padding:0.5rem 1rem;">
+                    <i class="fa-solid fa-location-dot"></i> Mi sucursal
+                </button>
+                <button class="btn ${modoVista === 'all' ? 'btn-primary' : 'btn-outline'}" id="btn-ver-all"
+                    style="font-size:0.9rem; padding:0.5rem 1rem;">
+                    <i class="fa-solid fa-earth-americas"></i> Todas las sucursales
+                    <span style="background:rgba(0,0,0,0.15); border-radius:4px; padding:0.1rem 0.4rem;
+                        font-size:0.75rem; margin-left:0.25rem;">solo lectura</span>
+                </button>
             </div>
         `;
 
-        const provTabContent = document.getElementById("prov-tab-content");
-
-        const provRenderTab = {
+        const tabs = {
             productos: () => {
-                provTabContent.innerHTML = `
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                            <thead>
-                                <tr style="background: var(--primary-color);">
-                                    <th style="padding: 1rem 1.5rem; color: white; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Producto</th>
-                                    <th style="padding: 1rem 1.5rem; color: white; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Categoría</th>
-                                    <th style="padding: 1rem 1.5rem; color: white; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Precio</th>
-                                    <th style="padding: 1rem 1.5rem; color: white; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Stock</th>
-                                    <th style="padding: 1rem 1.5rem; color: white; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Estado</th>
-                                    <th style="padding: 1rem 1.5rem; color: white; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Actualizar Stock</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${prods.map(p => {
-                                    const stock = p.inventario ? p.inventario.reduce((a, i) => a + (i.stock || 0), 0) : 0;
-                                    const invId = p.inventario && p.inventario.length > 0 ? p.inventario[0].id : null;
-                                    return `
-                                    <tr style="border-bottom: 1px solid var(--border-color);">
-                                        <td style="padding: 1rem 1.5rem; font-weight: 600; display:flex; align-items:center; gap:0.5rem;">
-                                            ${p.imagen_url ? `<img src="${p.imagen_url}" style="width:30px; height:30px; border-radius:4px; object-fit:cover;">` : ''}
-                                            ${p.nombre}
-                                        </td>
-                                        <td style="padding: 1rem 1.5rem; color: var(--text-muted);">${p.categorias?.nombre || '—'}</td>
-                                        <td style="padding: 1rem 1.5rem;">$ ${p.precio} Zoles</td>
-                                        <td style="padding: 1rem 1.5rem; font-weight: 700; color: ${stock > 0 ? 'var(--primary-color)' : '#ef4444'};">${stock}</td>
-                                        <td style="padding: 1rem 1.5rem;">
-                                            <span style="background: ${p.activo !== false ? '#dcfce7' : '#fee2e2'}; color: ${p.activo !== false ? '#16a34a' : '#ef4444'}; padding: 0.2rem 0.6rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">${p.activo !== false ? 'Activo' : 'Inactivo'}</span>
-                                        </td>
-                                        <td style="padding: 1rem 1.5rem;">
-                                            ${invId ? `
-                                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                                    <input type="number" class="stock-input input-control" data-inv-id="${invId}" data-prod-id="${p.id}" data-prod-name="${p.nombre}" value="${stock}" min="0" style="width: 80px; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
-                                                    <button class="btn btn-primary btn-update-stock" data-inv-id="${invId}" data-prod-id="${p.id}" data-prod-name="${p.nombre}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;"><i class="fa-solid fa-check"></i></button>
-                                                </div>
-                                            ` : '<span style="color: var(--text-muted); font-size: 0.85rem;">Sin inventario asociado</span>'}
-                                        </td>
-                                    </tr>
-                                `}).join("")}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+                // Construir filas: my_branch = editable, other = lectura
+                const filas = [];
+                for (const p of prods) {
+                    const invList = modoVista === 'mine'
+                        ? p.inventario.filter(i => i.sucursal_id === miSucursalId)
+                        : p.inventario;
 
-                // ── Stock update listeners ──
-                document.querySelectorAll(".btn-update-stock").forEach(btn => {
-                    btn.addEventListener("click", async (e) => {
-                        const el = e.currentTarget;
-                        const invId = parseInt(el.dataset.invId);
-                        const prodId = parseInt(el.dataset.prodId);
-                        const prodName = el.dataset.prodName;
-                        const input = document.querySelector(`.stock-input[data-inv-id="${invId}"]`);
+                    if (invList.length === 0 && modoVista === 'mine') continue; // producto sin stock en mi sucursal
+
+                    for (const inv of invList) {
+                        filas.push({ producto: p, inv, editable: inv.sucursal_id === miSucursalId });
+                    }
+                }
+
+                tabContent.innerHTML = renderToggle() + (filas.length === 0
+                    ? `<div style="text-align:center; padding:3rem; color:var(--text-muted);">
+                           ${miSucursalId
+                               ? 'No hay productos con inventario en tu sucursal.'
+                               : 'Sin sede asignada. Contacta al administrador.'}
+                       </div>`
+                    : `<div style="overflow-x:auto;">
+                           <table class="table-admin">
+                               <thead><tr>
+                                   <th>Producto</th><th>Categoría</th><th>Precio</th>
+                                   <th>Sucursal</th>
+                                   <th style="text-align:center;">Stock</th>
+                                   <th style="text-align:center;">
+                                       ${modoVista === 'mine' ? 'Actualizar' : 'Solo lectura'}
+                                   </th>
+                               </tr></thead>
+                               <tbody>
+                                   ${filas.map(({ producto: p, inv, editable }) => `
+                                       <tr ${!editable ? 'style="opacity:0.65;"' : ''}>
+                                           <td style="font-weight:600; display:flex; align-items:center; gap:0.5rem;">
+                                               ${p.imagen_url
+                                                   ? `<img src="${p.imagen_url}"
+                                                       style="width:28px;height:28px;border-radius:4px;object-fit:cover;">`
+                                                   : ''}
+                                               ${p.nombre}
+                                           </td>
+                                           <td style="color:var(--text-muted);">${p.categoria}</td>
+                                           <td>$ ${p.precio} Zoles</td>
+                                           <td>
+                                               <span style="display:inline-flex; align-items:center; gap:0.3rem;
+                                                   ${editable ? 'color:var(--primary-color); font-weight:600;' : 'color:var(--text-muted);'}
+                                                   font-size:0.9rem;">
+                                                   <i class="fa-solid fa-location-dot"></i>
+                                                   ${inv.sucursal_nombre}
+                                                   ${editable ? '(mi sede)' : ''}
+                                               </span>
+                                           </td>
+                                           <td style="text-align:center; font-weight:700;
+                                               color:${inv.stock > 0 ? 'var(--primary-color)' : '#ef4444'};">
+                                               ${inv.stock}
+                                           </td>
+                                           <td style="text-align:center;">
+                                               ${editable
+                                                   ? `<div style="display:inline-flex; gap:0.4rem; align-items:center;">
+                                                          <input type="number" class="stock-input input-control"
+                                                              data-inv-id="${inv.id}"
+                                                              data-prod-id="${p.id}"
+                                                              data-suc-id="${inv.sucursal_id}"
+                                                              value="${inv.stock}" min="0"
+                                                              style="width:80px;padding:0.35rem 0.5rem;font-size:0.9rem;">
+                                                          <button class="btn btn-primary btn-update-stock"
+                                                              data-inv-id="${inv.id}"
+                                                              data-prod-id="${p.id}"
+                                                              data-suc-id="${inv.sucursal_id}"
+                                                              style="padding:0.35rem 0.7rem;font-size:0.85rem;">
+                                                              <i class="fa-solid fa-check"></i>
+                                                          </button>
+                                                      </div>`
+                                                   : `<span style="color:var(--text-muted); font-size:0.8rem;">
+                                                          <i class="fa-solid fa-eye"></i> lectura
+                                                      </span>`}
+                                           </td>
+                                       </tr>`).join('')}
+                               </tbody>
+                           </table>
+                       </div>`
+                );
+
+                // Listeners toggle
+                document.getElementById('btn-ver-mine')?.addEventListener('click', () => {
+                    modoVista = 'mine'; tabs.productos();
+                });
+                document.getElementById('btn-ver-all')?.addEventListener('click', () => {
+                    modoVista = 'all'; tabs.productos();
+                });
+
+                // Listeners stock (solo filas editables)
+                document.querySelectorAll('.btn-update-stock').forEach(btn => {
+                    btn.addEventListener('click', async e => {
+                        const el       = e.currentTarget;
+                        const invId    = parseInt(el.dataset.invId);
+                        const prodId   = parseInt(el.dataset.prodId);
+                        const sucId    = parseInt(el.dataset.sucId);
+                        const input    = document.querySelector(`.stock-input[data-inv-id="${invId}"]`);
                         const newStock = parseInt(input.value);
 
                         if (isNaN(newStock) || newStock < 0) {
-                            alert("Stock debe ser un número positivo.");
+                            alert('El stock debe ser un número positivo.');
                             return;
                         }
-
                         try {
-                            el.disabled = true;
+                            el.disabled  = true;
                             el.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-
-                            // Obtener stock actual
-                            const { data: currentInvList } = await supabase
-                                .from("inventario")
-                                .select("stock")
-                                .eq("id", invId)
-                                .limit(1);
-
-                            const currentInv = currentInvList ? currentInvList[0] : { stock: 0 };
-                            const diff = newStock - (currentInv.stock || 0);
-
-                            // Actualizar stock
-                            await supabase
-                                .from("inventario")
-                                .update({ stock: newStock })
-                                .eq("id", invId);
-
-                            // Registrar movimiento si hay diferencia
+                            const { stock: actual } = await obtenerStockActual(invId);
+                            await actualizarStock(invId, newStock);
+                            const diff = newStock - actual;
                             if (diff !== 0) {
-                                await supabase
-                                    .from("movimientos_inventario")
-                                    .insert([{
-                                        producto_id: prodId,
-                                        tipo: diff > 0 ? "entrada" : "salida",
-                                        cantidad: Math.abs(diff),
-                                        descripcion: `Ajuste manual - ${prodName}`
-                                    }]);
+                                await registrarMovimientoInventario(
+                                    prodId, sucId,
+                                    diff > 0 ? 'entrada' : 'salida',
+                                    Math.abs(diff)
+                                );
                             }
-
-                            el.innerHTML = '<i class="fa-solid fa-check" style="color: white;"></i>';
-                            el.style.background = "#16a34a";
+                            el.innerHTML        = '<i class="fa-solid fa-check" style="color:white;"></i>';
+                            el.style.background = '#16a34a';
                             setTimeout(() => {
-                                el.innerHTML = '<i class="fa-solid fa-check"></i>';
-                                el.style.background = "";
-                                el.disabled = false;
+                                el.innerHTML        = '<i class="fa-solid fa-check"></i>';
+                                el.style.background = '';
+                                el.disabled         = false;
                             }, 1500);
-
-                        } catch (error) {
-                            alert("Error actualizando stock: " + error.message);
+                        } catch (err) {
+                            alert('Error: ' + err.message);
                             el.innerHTML = '<i class="fa-solid fa-check"></i>';
-                            el.disabled = false;
+                            el.disabled  = false;
                         }
                     });
                 });
             },
+
             movimientos: () => {
-                provTabContent.innerHTML = `
-                    <div style="padding: 2rem;">
-                        ${movimientos.length === 0 ? '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">Sin movimientos recientes.</p>' :
-                        movimientos.map(m => `
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--background-color); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
-                                <div>
-                                    <span style="font-weight: 600;">${m.productos?.nombre || 'Producto'}</span>
-                                    <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.5rem;">${m.descripcion || m.tipo}</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 1rem;">
-                                    <span style="font-weight: 700; color: ${m.tipo === 'salida' ? '#ef4444' : '#16a34a'};">
-                                        ${m.tipo === 'salida' ? '-' : '+'}${m.cantidad}
-                                    </span>
-                                    <span style="color: var(--text-muted); font-size: 0.8rem;">${m.fecha ? new Date(m.fecha).toLocaleDateString() : ''}</span>
-                                </div>
-                            </div>
-                        `).join("")}
-                    </div>
-                `;
+                const lista = modoVista === 'mine'
+                    ? movimientos.filter(m => m.sucursal_id === miSucursalId)
+                    : movimientos;
+
+                tabContent.innerHTML = renderToggle() + (lista.length === 0
+                    ? `<p style="padding:2rem; text-align:center; color:var(--text-muted);">
+                           Sin movimientos en tu sucursal.
+                       </p>`
+                    : `<div style="overflow-x:auto;">
+                           <table class="table-admin">
+                               <thead><tr>
+                                   <th>Producto</th><th>Sucursal</th><th>Tipo</th>
+                                   <th>Fecha</th><th style="text-align:right;">Cant.</th>
+                               </tr></thead>
+                               <tbody>
+                                   ${lista.map(m => `
+                                       <tr>
+                                           <td style="font-weight:600;">${m.productos?.nombre || '—'}</td>
+                                           <td style="color:var(--text-muted); font-size:0.9rem;">
+                                               <i class="fa-solid fa-location-dot"
+                                                   style="color:var(--primary-color); font-size:0.75rem;"></i>
+                                               ${m.sucursales?.nombre || '—'}
+                                           </td>
+                                           <td style="color:${m.tipo==='salida'?'#ef4444':'#16a34a'};
+                                               font-weight:600;">${m.tipo}</td>
+                                           <td style="color:var(--text-muted); font-size:0.85rem;">
+                                               ${m.fecha ? new Date(m.fecha).toLocaleDateString() : '—'}
+                                           </td>
+                                           <td style="text-align:right; font-weight:700;
+                                               color:${m.tipo==='salida'?'#ef4444':'#16a34a'};">
+                                               ${m.tipo==='salida'?'−':'+'}${m.cantidad}
+                                           </td>
+                                       </tr>`).join('')}
+                               </tbody>
+                           </table>
+                       </div>`
+                );
+
+                // Toggle listeners en el tab movimientos también
+                document.getElementById('btn-ver-mine')?.addEventListener('click', () => {
+                    modoVista = 'mine'; tabs.movimientos();
+                });
+                document.getElementById('btn-ver-all')?.addEventListener('click', () => {
+                    modoVista = 'all'; tabs.movimientos();
+                });
             }
         };
 
-        // Tab switching
-        document.querySelectorAll(".prov-tab").forEach(tab => {
-            tab.addEventListener("click", (e) => {
-                const tabName = e.currentTarget.dataset.tab;
-                document.querySelectorAll(".prov-tab").forEach(t => {
-                    t.style.background = "white";
-                    t.style.color = "var(--text-muted)";
-                    t.style.borderColor = "var(--border-color)";
-                    t.classList.remove("active");
-                });
-                e.currentTarget.style.background = "var(--primary-color)";
-                e.currentTarget.style.color = "white";
-                e.currentTarget.style.borderColor = "var(--primary-color)";
-                e.currentTarget.classList.add("active");
-                if (provRenderTab[tabName]) provRenderTab[tabName]();
+        document.querySelectorAll('.prov-tab').forEach(tab => {
+            tab.addEventListener('click', e => {
+                document.querySelectorAll('.prov-tab').forEach(t => t.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                const name = e.currentTarget.dataset.tab;
+                if (tabs[name]) tabs[name]();
             });
         });
 
-        provRenderTab.productos();
+        tabs.productos();
 
     } catch (error) {
-        console.error("Error en dashboard proveedor:", error);
-        container.innerHTML = `
-            <div style="text-align: center; padding: 4rem; color: #ef4444;">
-                <h2>Error al cargar panel</h2>
-                <p style="margin-top: 0.5rem; color: var(--text-muted);">${error.message}</p>
-            </div>`;
+        console.error('Error en dashboard proveedor:', error);
+        container.innerHTML = errorState(error.message);
     }
 };

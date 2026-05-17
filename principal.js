@@ -149,4 +149,4 @@ window.addEventListener('cart-updated', updateNav);
 window.addEventListener('user-updated', updateNav);
 window.addEventListener('hashchange', router);
 
-console.log("✅ Principal cargado — Mecani-KOC");
+console.log("Principal cargado — Mecani-KOC");
