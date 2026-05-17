@@ -1,69 +1,34 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Módulo Inventario — Catálogo de productos (Supabase)
+// Módulo Inventario — Catálogo de productos
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-import { supabase } from "../../core/supabaseClient.js";
-import { obtenerUsuarioLocal } from "../autenticacion/authService.js";
+import { obtenerProductosConInventario, obtenerCategorias } from '../../services/productosService.js';
+import { obtenerUsuarioLocal } from '../autenticacion/authService.js';
+import { spinner, emptyState, errorState } from '../../ui/components.js';
 
-export const renderInventario = async (container, initialQuery = "") => {
-    // Spinner de carga
-    container.innerHTML = `
-        <div style="text-align: center; padding: 4rem;">
-            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <p style="margin-top: 1rem; color: var(--text-muted);">Cargando inventario...</p>
-        </div>
-        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
-    `;
+export const renderInventario = async (container, initialQuery = '') => {
+    container.innerHTML = spinner('Cargando inventario...');
 
     try {
-        // ── Traer datos de Supabase ──
-        const { data: productosRaw, error: prodError } = await supabase
-            .from("productos")
-            .select(`
-                *,
-                categorias ( nombre ),
-                proveedores ( nombre ),
-                inventario ( stock )
-            `);
-
-        if (prodError) throw prodError;
-
-        const { data: categorias, error: catError } = await supabase
-            .from("categorias")
-            .select("*");
-
-        if (catError) throw catError;
-
-        // ── Normalizar productos ──
-        const productos = productosRaw.map(p => ({
-            id: p.id,
-            nombre: p.nombre,
-            descripcion: p.descripcion || "",
-            precio: p.precio,
-            imagen_url: p.imagen_url,
-            categoria_id: p.categoria_id,
-            proveedor_id: p.proveedor_id,
-            categoria: p.categorias?.nombre || "Sin categoría",
-            proveedor: p.proveedores?.nombre || "—",
-            stock_total: p.inventario
-                ? p.inventario.reduce((acc, inv) => acc + (inv.stock || 0), 0)
-                : 0
-        }));
+        const [productos, categorias] = await Promise.all([
+            obtenerProductosConInventario(),
+            obtenerCategorias()
+        ]);
 
         // ── Estado local de filtros ──
-        let currentCategoria = "Todos";
+        let currentCategoria = 'Todos';
         let searchQuery = initialQuery
-            ? decodeURIComponent(initialQuery.split("=")[1] || "")
-            : "";
+            ? decodeURIComponent(initialQuery.split('=')[1] || '')
+            : '';
 
-        // ── Función interna para renderizar grid ──
-        const renderProducts = () => {
-            const grid = document.getElementById("product-grid");
+        // ── Renderiza el grid de productos según filtros activos ──
+        const renderGrid = () => {
+            const grid = document.getElementById('product-grid');
             if (!grid) return;
 
             let filtered = productos;
 
-            if (currentCategoria !== "Todos") {
+            if (currentCategoria !== 'Todos') {
                 filtered = filtered.filter(p => p.categoria === currentCategoria);
             }
             if (searchQuery) {
@@ -76,37 +41,55 @@ export const renderInventario = async (container, initialQuery = "") => {
 
             if (filtered.length === 0) {
                 grid.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--text-muted); background: var(--card-bg); border-radius: var(--radius-lg);">
-                        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">🔍</div>
-                        <p>No se encontraron productos que coincidan con tu búsqueda.</p>
+                    <div style="grid-column: 1 / -1;">
+                        ${emptyState({
+                            icon:    '🔍',
+                            title:   'Sin resultados',
+                            message: 'No se encontraron productos que coincidan con tu búsqueda.'
+                        })}
                     </div>`;
                 return;
             }
 
             grid.innerHTML = filtered.map(p => `
                 <div class="product-card">
-                    <div class="product-img" ${p.imagen_url ? `style="background-image: url('${p.imagen_url}'); background-size: cover; background-position: center;"` : ''}>
-                        ${!p.imagen_url ? `<span style="font-size: 0.8rem;">[Imagen ${p.nombre.split(' ')[0]}]</span>` : ''}
+                    <div class="product-img"
+                        ${p.imagen_url
+                            ? `style="background-image: url('${p.imagen_url}');
+                               background-size: cover; background-position: center;"`
+                            : ''}>
+                        ${!p.imagen_url
+                            ? `<span style="font-size: 0.8rem;">[Imagen ${p.nombre.split(' ')[0]}]</span>`
+                            : ''}
                     </div>
                     <div class="product-info">
                         <div class="product-category">${p.categoria}</div>
                         <h3 class="product-title">${p.nombre}</h3>
-                        <p class="product-desc">${p.descripcion.length > 80 ? p.descripcion.substring(0, 80) + '...' : p.descripcion}</p>
+                        <p class="product-desc">
+                            ${p.descripcion.length > 80
+                                ? p.descripcion.substring(0, 80) + '...'
+                                : p.descripcion}
+                        </p>
                         <div class="product-price-row">
                             <div class="product-price">$ ${p.precio} <span>Zoles</span></div>
-                            <div class="product-stock ${p.stock_total === 0 ? 'out-of-stock' : ''}">${p.stock_total > 0 ? p.stock_total + ' disp.' : 'Agotado'}</div>
+                            <div class="product-stock ${p.stock_total === 0 ? 'out-of-stock' : ''}">
+                                ${p.stock_total > 0 ? p.stock_total + ' disp.' : 'Agotado'}
+                            </div>
                         </div>
-                        <button class="btn btn-primary btn-add-cart" data-id="${p.id}" ${p.stock_total === 0 ? 'disabled' : ''}>
-                            ${p.stock_total > 0 ? '<i class="fa-solid fa-plus"></i> Agregar al carrito' : '<i class="fa-solid fa-ban"></i> Agotado'}
+                        <button class="btn btn-primary btn-add-cart"
+                            data-id="${p.id}" ${p.stock_total === 0 ? 'disabled' : ''}>
+                            ${p.stock_total > 0
+                                ? '<i class="fa-solid fa-plus"></i> Agregar al carrito'
+                                : '<i class="fa-solid fa-ban"></i> Agotado'}
                         </button>
                     </div>
                 </div>
-            `).join("");
+            `).join('');
 
-            // ── Listeners para agregar al carrito ──
-            document.querySelectorAll(".btn-add-cart").forEach(btn => {
-                btn.addEventListener("click", (e) => {
-                    const id = parseInt(e.currentTarget.dataset.id);
+            // Listeners para agregar al carrito
+            grid.querySelectorAll('.btn-add-cart').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    const id      = parseInt(e.currentTarget.dataset.id);
                     const producto = productos.find(p => p.id === id);
                     if (producto) addToCart(producto);
                 });
@@ -115,43 +98,35 @@ export const renderInventario = async (container, initialQuery = "") => {
 
         // ── Layout principal ──
         container.innerHTML = `
-            
-
             <div class="category-filters" id="category-filters">
-                <button class="category-pill ${currentCategoria === 'Todos' ? 'active' : ''}" data-cat="Todos">Todos</button>
-                ${categorias.map(c => `<button class="category-pill" data-cat="${c.nombre}">${c.nombre}</button>`).join("")}
+                <button class="category-pill active" data-cat="Todos">Todos</button>
+                ${categorias.map(c =>
+                    `<button class="category-pill" data-cat="${c.nombre}">${c.nombre}</button>`
+                ).join('')}
             </div>
-
             <div class="product-grid" id="product-grid"></div>
         `;
 
-        // ── Eventos ──
-        document.getElementById("category-filters").addEventListener("click", (e) => {
-            if (e.target.classList.contains("category-pill")) {
-                document.querySelectorAll(".category-pill").forEach(b => b.classList.remove("active"));
-                e.target.classList.add("active");
-                currentCategoria = e.target.dataset.cat;
-                renderProducts();
-            }
+        // Listener de filtros por categoría
+        document.getElementById('category-filters').addEventListener('click', e => {
+            if (!e.target.classList.contains('category-pill')) return;
+            document.querySelectorAll('.category-pill').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentCategoria = e.target.dataset.cat;
+            renderGrid();
         });
 
-        // Escuchar cambios del search global (header)
-        const globalSearch = document.getElementById("global-search");
+        // Sincronizar con búsqueda global del header
+        const globalSearch = document.getElementById('global-search');
         if (globalSearch && searchQuery) {
             globalSearch.value = searchQuery;
         }
 
-        renderProducts();
+        renderGrid();
 
     } catch (error) {
-        console.error("Error cargando inventario:", error);
-        container.innerHTML = `
-            <div style="text-align: center; padding: 4rem; color: #ef4444;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-                <h2>Error al cargar productos</h2>
-                <p style="margin-top: 0.5rem; color: var(--text-muted);">${error.message}</p>
-                <button class="btn btn-primary" style="margin-top: 1.5rem;" onclick="location.reload()">Reintentar</button>
-            </div>`;
+        console.error('Error cargando inventario:', error);
+        container.innerHTML = errorState(error.message);
     }
 };
 
@@ -162,14 +137,14 @@ export const renderInventario = async (container, initialQuery = "") => {
 const addToCart = (producto) => {
     const user = obtenerUsuarioLocal();
     if (!user) {
-        alert("Debes iniciar sesión para agregar productos al carrito.");
-        window.location.hash = "#/login";
+        alert('Debes iniciar sesión para agregar productos al carrito.');
+        window.location.hash = '#/login';
         return;
     }
 
     let cart;
     try {
-        cart = JSON.parse(localStorage.getItem("cart") || "[]");
+        cart = JSON.parse(localStorage.getItem('cart') || '[]');
     } catch {
         cart = [];
     }
@@ -178,28 +153,28 @@ const addToCart = (producto) => {
 
     if (existing) {
         if (existing.cantidad < producto.stock_total) {
-            existing.cantidad += 1;
+            existing.cantidad++;
         } else {
-            alert("Has alcanzado el límite de stock disponible.");
+            alert('Has alcanzado el límite de stock disponible.');
             return;
         }
     } else {
         cart.push({
             producto_id: producto.id,
-            nombre: producto.nombre,
-            precio: producto.precio,
-            imagen_url: producto.imagen_url || null,
-            cantidad: 1
+            nombre:      producto.nombre,
+            precio:      producto.precio,
+            imagen_url:  producto.imagen_url || null,
+            cantidad:    1
         });
     }
 
-    localStorage.setItem("cart", JSON.stringify(cart));
-    window.dispatchEvent(new Event("cart-updated"));
+    localStorage.setItem('cart', JSON.stringify(cart));
+    window.dispatchEvent(new Event('cart-updated'));
 
-    // Micro-feedback visual
-    const badge = document.querySelector(".cart-badge");
+    // Micro-feedback visual en el badge del carrito
+    const badge = document.querySelector('.cart-badge');
     if (badge) {
-        badge.style.transform = "scale(1.3)";
-        setTimeout(() => { badge.style.transform = "scale(1)"; }, 200);
+        badge.style.transform = 'scale(1.3)';
+        setTimeout(() => { badge.style.transform = 'scale(1)'; }, 200);
     }
 };

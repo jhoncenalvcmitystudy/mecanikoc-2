@@ -13,7 +13,7 @@ import { supabase } from "../../core/supabaseClient.js";
  * Devuelve el objeto completo del usuario desde la tabla
  * "usuarios" (con id, auth_id, nombre, email, rol_id, zoles, created_at).
  */
-export async function registrarUsuario(nombre, email, password) {
+export async function registrarUsuario(nombre, email, password, sucursalId = null) {
     // 1. Crear cuenta en Supabase Auth
     const { data: authData, error: authError } =
         await supabase.auth.signUp({ email, password });
@@ -23,7 +23,7 @@ export async function registrarUsuario(nombre, email, password) {
     const authUser = authData.user;
     if (!authUser) throw new Error("No se pudo crear la cuenta. Intenta de nuevo.");
 
-    // 2. Insertar en tabla "usuarios"
+    // 2. Insertar en tabla "usuarios" con sucursal asignada
     const { data: nuevoUsuario, error: dbError } = await supabase
         .from("usuarios")
         .insert([{
@@ -31,7 +31,8 @@ export async function registrarUsuario(nombre, email, password) {
             nombre,
             email,
             rol_id: 1,   // cliente por defecto
-            zoles: 1000
+            zoles: 1000,
+            sucursal_id: sucursalId
         }])
         .select("*")
         .single();
