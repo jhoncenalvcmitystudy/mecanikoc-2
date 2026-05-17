@@ -108,6 +108,57 @@ export async function obtenerMovimientosInventario(limit = 30) {
         .select('*, productos(nombre), sucursales(nombre)')
         .order('id', { ascending: false })
         .limit(limit);
+    if (error) {
+        console.warn('⚠️ Error cargando movimientos_inventario (posible RLS):', error.message);
+        return [];
+    }
+    return data || [];
+}
+
+/**
+ * Obtiene todos los proveedores.
+ */
+export async function obtenerProveedores() {
+    const { data, error } = await supabase.from('proveedores').select('*').order('id');
     if (error) throw error;
     return data || [];
+}
+
+/**
+ * Crea un producto nuevo. imagen_url es un link externo.
+ */
+export async function crearProducto({ nombre, descripcion, precio, categoria_id, proveedor_id, imagen_url }) {
+    const { data, error } = await supabase
+        .from('productos')
+        .insert([{ nombre, descripcion, precio, categoria_id, proveedor_id, imagen_url: imagen_url || null }])
+        .select('*')
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Crea un registro de inventario: asigna un producto a una sucursal con stock inicial.
+ * Esto es lo que determina que un producto "existe" en una sucursal.
+ */
+export async function crearRegistroInventario(productoId, sucursalId, stockInicial = 0) {
+    // Verificar que no exista ya
+    const { data: existing } = await supabase
+        .from('inventario')
+        .select('id')
+        .eq('producto_id', productoId)
+        .eq('sucursal_id', sucursalId)
+        .limit(1);
+
+    if (existing && existing.length > 0) {
+        throw new Error('Este producto ya está asignado a esa sucursal.');
+    }
+
+    const { data, error } = await supabase
+        .from('inventario')
+        .insert([{ producto_id: productoId, sucursal_id: sucursalId, stock: stockInicial }])
+        .select('*')
+        .single();
+    if (error) throw error;
+    return data;
 }

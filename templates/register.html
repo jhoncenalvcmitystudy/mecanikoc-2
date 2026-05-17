@@ -26,6 +26,15 @@
                 <input type="password" id="reg-password" class="input-control"
                     placeholder="Mínimo 6 caracteres" minlength="6" required>
             </div>
+            <div class="input-group">
+                <label for="reg-sucursal">
+                    <i class="fa-solid fa-location-dot" style="color: var(--primary-color);"></i>
+                    Sucursal (ubicación)
+                </label>
+                <select id="reg-sucursal" class="input-control" required>
+                    <option value="">— Cargando sucursales... —</option>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary" id="btn-register"
                 style="width: 100%; margin-top: 1rem; padding: 1rem;">
                 Registrarse

@@ -12,7 +12,10 @@ export async function obtenerSucursales() {
         .from('sucursales')
         .select('*')
         .order('id');
-    if (error) throw error;
+    if (error) {
+        console.warn('⚠️ No se pudieron cargar sucursales (RLS?):', error.message);
+        return [];
+    }
     return data || [];
 }
 
