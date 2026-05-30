@@ -11,8 +11,8 @@ import {
 } from '../../services/productosService.js';
 import { obtenerSucursales, crearSucursal, eliminarSucursal } from '../../services/sucursalesService.js';
 import { spinner, errorState, estadoBadge } from '../../ui/components.js';
-import { apiCall } from '../middleware/index.js';
-import { supabase } from '../supabaseClient.js';
+import { apiCall } from '../../core/middleware/index.js';
+import { supabase } from '../../core/supabaseClient.js';
 
 export const renderDashboardAdmin = async (container) => {
     const user = obtenerUsuarioLocal();
