@@ -178,12 +178,12 @@
 }
 
 .stat-card {
-    background: var(--card-bg);
+    background: #8cffb4;
     padding: 2rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-    border-left: 4px solid transparent;
+    border-radius:0;
+    
+    box-shadow: 2px 5px 10px #3d3d3d29;
+    
 }
 
 .border-primary { border-left-color: var(--primary-color); }

@@ -1,39 +1,65 @@
-<div class="dashboard-admin">
-    <div class="dashboard-header">
-        <h1>Panel de Administración</h1>
-        <p id="admin-bienvenida"></p>
+<div class="dashboard-admin" style="max-width: 1200px; margin: 0 auto; padding: 1rem;">
+    <div class="dashboard-header" style="margin-bottom: 2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem;">
+        <h1 style="font-size: 2.5rem; color: var(--text-main); font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-shield-halved" style="color: var(--primary-color);"></i>
+            Panel de Administración
+        </h1>
+        <p id="admin-bienvenida" style="color: var(--text-muted); font-size: 1.05rem; margin: 0;"></p>
     </div>
 
     <!-- Stats -->
-    <div class="stats-grid">
-        <div class="stat-card border-primary">
-            <span class="stat-label">Usuarios</span>
-            <span class="stat-number" id="stat-usuarios">0</span>
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+        <div class="stat-card border-primary" style="background: var(--card-bg); border-left: 5px solid var(--primary-color); padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between;">
+            <span class="stat-label" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+                <i class="fa-solid fa-users" style="margin-right: 0.4rem; color: var(--primary-color);"></i> Usuarios
+            </span>
+            <span class="stat-number" id="stat-usuarios" style="font-size: 2.2rem; font-weight: 800; color: var(--text-main);">0</span>
         </div>
-        <div class="stat-card border-blue">
-            <span class="stat-label">Productos</span>
-            <span class="stat-number" id="stat-productos">0</span>
+        <div class="stat-card border-blue" style="background: var(--card-bg); border-left: 5px solid #3b82f6; padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between;">
+            <span class="stat-label" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+                <i class="fa-solid fa-boxes-stacked" style="margin-right: 0.4rem; color: #3b82f6;"></i> Catálogo Global
+            </span>
+            <span class="stat-number" id="stat-productos" style="font-size: 2.2rem; font-weight: 800; color: var(--text-main);">0</span>
         </div>
-        <div class="stat-card border-orange">
-            <span class="stat-label">Pedidos</span>
-            <span class="stat-number" id="stat-pedidos">0</span>
+        <div class="stat-card border-orange" style="background: var(--card-bg); border-left: 5px solid #f97316; padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between;">
+            <span class="stat-label" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+                <i class="fa-solid fa-truck-fast" style="margin-right: 0.4rem; color: #f97316;"></i> Pedidos Totales
+            </span>
+            <span class="stat-number" id="stat-pedidos" style="font-size: 2.2rem; font-weight: 800; color: var(--text-main);">0</span>
         </div>
-        <div class="stat-card border-red">
-            <span class="stat-label">Ventas</span>
-            <span class="stat-number" id="stat-ventas">$0</span>
+        <div class="stat-card border-red" style="background: var(--card-bg); border-left: 5px solid #ef4444; padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between;">
+            <span class="stat-label" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+                <i class="fa-solid fa-hand-holding-dollar" style="margin-right: 0.4rem; color: #ef4444;"></i> Recaudado
+            </span>
+            <span class="stat-number" id="stat-ventas" style="font-size: 2.2rem; font-weight: 800; color: var(--text-main);">S/. 0</span>
         </div>
     </div>
 
     <!-- Tabs -->
-    <div class="admin-tabs">
-        <button class="admin-tab active" data-tab="usuarios">Usuarios</button>
-        <button class="admin-tab" data-tab="pedidos">Pedidos</button>
-        <button class="admin-tab" data-tab="productos">Productos</button>
-        <button class="admin-tab" data-tab="inventario">Inventario</button>
-        <button class="admin-tab" data-tab="movimientos">Movimientos</button>
-        <button class="admin-tab" data-tab="sucursales">Sucursales</button>
+    <div class="admin-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; overflow-x: auto;">
+        <button class="admin-tab active" data-tab="usuarios" style="padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); font-weight: 600; color: var(--text-muted); transition: var(--transition);">
+            <i class="fa-solid fa-users"></i> Usuarios
+        </button>
+        <button class="admin-tab" data-tab="pedidos" style="padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); font-weight: 600; color: var(--text-muted); transition: var(--transition);">
+            <i class="fa-solid fa-receipt"></i> Pedidos
+        </button>
+        <button class="admin-tab" data-tab="productos" style="padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); font-weight: 600; color: var(--text-muted); transition: var(--transition);">
+            <i class="fa-solid fa-list-check"></i> Catálogo
+        </button>
+        <button class="admin-tab" data-tab="inventario" style="padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); font-weight: 600; color: var(--text-muted); transition: var(--transition);">
+            <i class="fa-solid fa-warehouse"></i> Inventario de Sede
+        </button>
+        <button class="admin-tab" data-tab="solicitudes" style="padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); font-weight: 600; color: var(--text-muted); transition: var(--transition);">
+            <i class="fa-solid fa-clipboard-list"></i> Solicitudes
+        </button>
+        <button class="admin-tab" data-tab="movimientos" style="padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); font-weight: 600; color: var(--text-muted); transition: var(--transition);">
+            <i class="fa-solid fa-clock-rotate-left"></i> Historial Sede
+        </button>
+        <button class="admin-tab" data-tab="sucursales" style="padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); font-weight: 600; color: var(--text-muted); transition: var(--transition);">
+            <i class="fa-solid fa-building"></i> Sucursales
+        </button>
     </div>
 
     <!-- Contenido de tab -->
-    <div id="admin-tab-content" class="admin-content"></div>
+    <div id="admin-tab-content" class="admin-content" style="background: var(--card-bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); overflow: hidden; min-height: 400px;"></div>
 </div>

@@ -31,7 +31,7 @@ export async function registrarUsuario(nombre, email, password, sucursalId = nul
             nombre,
             email,
             rol_id: 1,   // cliente por defecto
-            zoles: 1000,
+            soles: 1000,
             sucursal_id: sucursalId
         }])
         .select("*")

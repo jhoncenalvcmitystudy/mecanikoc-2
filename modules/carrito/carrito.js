@@ -37,13 +37,9 @@ export const renderCarrito = async (container) => {
         }
 
         const total         = cart.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
-        const zolesOk       = user.zoles >= total;
+        const solesOk       = user.soles >= total;
         const tienesSucursal = !!user.sucursal_id;
         const sucursalFija  = sucursales.find(s => s.id === user.sucursal_id);
-
-        // Si el usuario tiene sucursal asignada, no mostramos selector.
-        // Si no la tiene, mostramos selector de fallback.
-        const mostrarSelector = !tienesSucursal;
 
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem;">
@@ -72,7 +68,7 @@ export const renderCarrito = async (container) => {
                                     <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);
                                         margin-bottom:0.25rem;">${item.nombre}</div>
                                     <div style="color:var(--primary-color); font-weight:600;">
-                                        $ ${item.precio} Zoles c/u
+                                        S/. ${item.precio} c/u
                                     </div>
                                 </div>
                             </div>
@@ -91,7 +87,7 @@ export const renderCarrito = async (container) => {
                                 </div>
                                 <div style="font-weight:800; font-size:1.2rem;
                                     min-width:100px; text-align:right;">
-                                    $ ${item.precio * item.cantidad}
+                                    S/. ${item.precio * item.cantidad}
                                 </div>
                                 <button class="btn-remove" data-index="${idx}"
                                     style="background:#fee2e2; border:none; color:#ef4444; cursor:pointer;
@@ -111,11 +107,11 @@ export const renderCarrito = async (container) => {
                     <div style="display:flex; justify-content:space-between;
                         margin-bottom:1rem; color:var(--text-muted);">
                         <span>Subtotal (${cart.reduce((a,i) => a+i.cantidad, 0)} artículos)</span>
-                        <span>$ ${total} Zoles</span>
+                        <span>S/. ${total}</span>
                     </div>
                     <div class="cart-total-row">
                         <span>Total a pagar</span>
-                        <span style="color:var(--primary-color);">$ ${total} Zoles</span>
+                        <span style="color:var(--primary-color);">S/. ${total}</span>
                     </div>
 
                     <!-- Saldo -->
@@ -123,14 +119,14 @@ export const renderCarrito = async (container) => {
                         padding:1rem; border-radius:var(--radius-md);">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span style="color:var(--text-muted); font-size:0.9rem;">Tu saldo:</span>
-                            <strong style="color:${zolesOk ? 'inherit' : '#ef4444'};">
-                                $ ${user.zoles} Zoles
+                            <strong style="color:${solesOk ? 'inherit' : '#ef4444'};">
+                                S/. ${user.soles}
                             </strong>
                         </div>
-                        <div style="color:${zolesOk ? 'var(--primary-color)' : '#ef4444'};
+                        <div style="color:${solesOk ? 'var(--primary-color)' : '#ef4444'};
                             font-size:0.85rem; margin-top:0.5rem; display:flex; gap:0.4rem; align-items:center;">
-                            <i class="fa-solid ${zolesOk ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i>
-                            ${zolesOk ? 'Saldo suficiente' : 'Zoles insuficientes'}
+                            <i class="fa-solid ${solesOk ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i>
+                            ${solesOk ? 'Saldo suficiente' : 'Soles insuficientes'}
                         </div>
                     </div>
 
@@ -160,7 +156,7 @@ export const renderCarrito = async (container) => {
                                    ${sucursales.map(s =>
                                        `<option value="${s.id}">${s.nombre} · ${s.ubicacion}</option>`
                                    ).join('')}
-                               </select>
+                                </select>
                                <p style="color:#d97706; font-size:0.8rem; margin-top:0.4rem;">
                                    <i class="fa-solid fa-circle-info"></i>
                                    Puedes asignar tu sucursal permanente desde tu
@@ -172,7 +168,7 @@ export const renderCarrito = async (container) => {
 
                     <button id="btn-comprar" class="btn btn-primary"
                         style="width:100%; padding:1rem; font-size:1.1rem;"
-                        ${!zolesOk || (!tienesSucursal && sucursales.length === 0) ? 'disabled' : ''}>
+                        ${!solesOk || (!tienesSucursal && sucursales.length === 0) ? 'disabled' : ''}>
                         <i class="fa-solid fa-money-check-dollar"></i> Confirmar y Pagar
                     </button>
                 </div>
@@ -202,11 +198,11 @@ export const renderCarrito = async (container) => {
             });
         });
 
-        // Activar botón al elegir sucursal (solo cuando usa selector)
+        // Activar botón al elegir sucursal
         const selectSuc = document.getElementById('sucursal-select');
         const btnComprar = document.getElementById('btn-comprar');
         if (selectSuc && btnComprar) {
-            const check = () => { btnComprar.disabled = !selectSuc.value || !zolesOk; };
+            const check = () => { btnComprar.disabled = !selectSuc.value || !solesOk; };
             check();
             selectSuc.addEventListener('change', check);
         }
@@ -216,7 +212,6 @@ export const renderCarrito = async (container) => {
             const errorBox = document.getElementById('checkout-error');
             errorBox.style.display = 'none';
 
-            // Determinar la sucursal: fija del usuario o elegida en el selector
             const sucursalId = tienesSucursal
                 ? user.sucursal_id
                 : parseInt(document.getElementById('sucursal-select')?.value);
@@ -233,7 +228,7 @@ export const renderCarrito = async (container) => {
                     style="width:20px;height:20px;border-width:3px;margin-right:0.5rem;"></span>
                     Procesando...`;
 
-                const total = cart.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
+                const finalTotal = cart.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
                 await realizarCompra(user, cart, sucursalId);
 
                 const updatedUser = await obtenerUsuarioPorId(user.id);
@@ -261,10 +256,10 @@ export const renderCarrito = async (container) => {
                         <div style="background:var(--background-color); padding:1.5rem;
                             border-radius:var(--radius-md); margin-bottom:2rem; text-align:left;">
                             <p style="margin-bottom:0.5rem;">
-                                Total pagado: <strong>$ ${total} Zoles</strong>
+                                Total pagado: <strong>S/. ${finalTotal}</strong>
                             </p>
                             <p style="color:var(--text-muted); margin-bottom:0.5rem;">
-                                Saldo restante: $ ${updatedUser.zoles} Zoles
+                                Saldo restante: S/. ${updatedUser.soles}
                             </p>
                             <p style="color:var(--text-muted);">
                                 <i class="fa-solid fa-location-dot" style="color:var(--primary-color);"></i>

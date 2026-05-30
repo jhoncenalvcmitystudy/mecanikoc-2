@@ -1,5 +1,5 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Módulo Inventario — Catálogo de productos
+// Módulo Inventario — Catálogo de productos con ofertas locales
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import { obtenerProductosConInventario, obtenerCategorias } from '../../services/productosService.js';
@@ -7,7 +7,7 @@ import { obtenerUsuarioLocal } from '../autenticacion/authService.js';
 import { spinner, emptyState, errorState } from '../../ui/components.js';
 
 export const renderInventario = async (container, initialQuery = '') => {
-    container.innerHTML = spinner('Cargando inventario...');
+    container.innerHTML = spinner('Cargando catálogo...');
 
     try {
         const [productos, categorias] = await Promise.all([
@@ -51,40 +51,93 @@ export const renderInventario = async (container, initialQuery = '') => {
                 return;
             }
 
-            grid.innerHTML = filtered.map(p => `
-                <div class="product-card">
-                    <div class="product-img"
-                        ${p.imagen_url
-                            ? `style="background-image: url('${p.imagen_url}');
-                               background-size: cover; background-position: center;"`
-                            : ''}>
-                        ${!p.imagen_url
-                            ? `<span style="font-size: 0.8rem;">[Imagen ${p.nombre.split(' ')[0]}]</span>`
-                            : ''}
-                    </div>
-                    <div class="product-info">
-                        <div class="product-category">${p.categoria}</div>
-                        <h3 class="product-title">${p.nombre}</h3>
-                        <p class="product-desc">
-                            ${p.descripcion.length > 80
-                                ? p.descripcion.substring(0, 80) + '...'
-                                : p.descripcion}
-                        </p>
-                        <div class="product-price-row">
-                            <div class="product-price">$ ${p.precio} <span>Zoles</span></div>
-                            <div class="product-stock ${p.stock_total === 0 ? 'out-of-stock' : ''}">
-                                ${p.stock_total > 0 ? p.stock_total + ' disp.' : 'Agotado'}
-                            </div>
+            grid.innerHTML = filtered.map(p => {
+                const user = obtenerUsuarioLocal();
+                const userSucursalId = user ? user.sucursal_id : null;
+                
+                let stockText = '';
+                let badgeClass = '';
+                let badgeStyle = '';
+                let sucursalInfoHTML = '';
+                let canAdd = false;
+                let priceHTML = `S/. ${p.precio}`;
+
+                if (user) {
+                    if (userSucursalId) {
+                        const invItem = p.inventario ? p.inventario.find(inv => inv.sucursal_id === userSucursalId) : null;
+                        const stockSucursal = invItem ? invItem.stock : 0;
+                        const sucursalNombre = invItem ? invItem.sucursal_nombre : 'tu sede';
+                        
+                        canAdd = stockSucursal > 0;
+                        stockText = canAdd ? `${stockSucursal} disp. (${sucursalNombre})` : `Agotado en (${sucursalNombre})`;
+                        badgeClass = canAdd ? 'product-stock' : 'product-stock out-of-stock';
+                        badgeStyle = canAdd ? 'color: #15803d; background: #f0fdf4; font-weight: 600;' : '';
+                        
+                        // Si está en oferta localmente
+                        if (invItem && invItem.en_oferta && invItem.precio_oferta !== null) {
+                            priceHTML = `
+                                <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem; font-weight: normal; margin-right: 0.4rem;">S/. ${p.precio}</span>
+                                <span style="color: #ef4444; font-weight: 800;">S/. ${invItem.precio_oferta}</span>
+                                <span style="background: #fee2e2; color: #ef4444; font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.3rem; border-radius: 4px; margin-left: 0.3rem; vertical-align: middle;">OFERTA</span>
+                            `;
+                        }
+
+                        if (p.stock_total > stockSucursal) {
+                            sucursalInfoHTML = `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; text-align: right; width: 100%;">
+                                Stock global: ${p.stock_total}
+                            </div>`;
+                        }
+                    } else {
+                        canAdd = p.stock_total > 0;
+                        stockText = canAdd ? `${p.stock_total} disp. (Sin sede)` : 'Agotado';
+                        badgeClass = canAdd ? 'product-stock' : 'product-stock out-of-stock';
+                        badgeStyle = canAdd ? 'color: #ca8a04; background: #fef9c3; font-weight: 600;' : '';
+                        sucursalInfoHTML = `<div style="font-size: 0.75rem; color: #d97706; margin-top: 0.25rem; text-align: right; width: 100%;">
+                            Elige una sucursal en tu perfil para comprar
+                        </div>`;
+                    }
+                } else {
+                    canAdd = p.stock_total > 0;
+                    stockText = canAdd ? `${p.stock_total} disp.` : 'Agotado';
+                    badgeClass = canAdd ? 'product-stock' : 'product-stock out-of-stock';
+                }
+
+                return `
+                    <div class="product-card">
+                        <div class="product-img"
+                            ${p.imagen_url
+                                ? `style="background-image: url('${p.imagen_url}');
+                                   background-size: cover; background-position: center;"`
+                                : ''}>
+                            ${!p.imagen_url
+                                ? `<span style="font-size: 0.8rem;">[Imagen ${p.nombre.split(' ')[0]}]</span>`
+                                : ''}
                         </div>
-                        <button class="btn btn-primary btn-add-cart"
-                            data-id="${p.id}" ${p.stock_total === 0 ? 'disabled' : ''}>
-                            ${p.stock_total > 0
-                                ? '<i class="fa-solid fa-plus"></i> Agregar al carrito'
-                                : '<i class="fa-solid fa-ban"></i> Agotado'}
-                        </button>
+                        <div class="product-info">
+                            <div class="product-category">${p.categoria}</div>
+                            <h3 class="product-title">${p.nombre}</h3>
+                            <p class="product-desc">
+                                ${p.descripcion.length > 80
+                                    ? p.descripcion.substring(0, 80) + '...'
+                                    : p.descripcion}
+                            </p>
+                            <div class="product-price-row" style="flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                                <div class="product-price" style="font-size:1.3rem;">${priceHTML}</div>
+                                <div class="${badgeClass}" style="${badgeStyle}">
+                                    ${stockText}
+                                </div>
+                                ${sucursalInfoHTML}
+                            </div>
+                            <button class="btn btn-primary btn-add-cart"
+                                data-id="${p.id}" ${!canAdd ? 'disabled' : ''}>
+                                ${canAdd
+                                    ? '<i class="fa-solid fa-plus"></i> Agregar al carrito'
+                                    : '<i class="fa-solid fa-ban"></i> No disponible'}
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             // Listeners para agregar al carrito
             grid.querySelectorAll('.btn-add-cart').forEach(btn => {
@@ -133,7 +186,6 @@ export const renderInventario = async (container, initialQuery = '') => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Agregar producto al carrito (localStorage)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 const addToCart = (producto) => {
     const user = obtenerUsuarioLocal();
     if (!user) {
@@ -149,20 +201,37 @@ const addToCart = (producto) => {
         cart = [];
     }
 
+    const userSucursalId = user ? user.sucursal_id : null;
+    let limitStock = producto.stock_total;
+    let precioVenta = producto.precio;
+
+    if (userSucursalId) {
+        const invItem = producto.inventario ? producto.inventario.find(inv => inv.sucursal_id === userSucursalId) : null;
+        limitStock = invItem ? invItem.stock : 0;
+        if (invItem && invItem.en_oferta && invItem.precio_oferta !== null) {
+            precioVenta = invItem.precio_oferta;
+        }
+    }
+
     const existing = cart.find(i => i.producto_id === producto.id);
 
     if (existing) {
-        if (existing.cantidad < producto.stock_total) {
+        if (existing.cantidad < limitStock) {
             existing.cantidad++;
+            existing.precio = precioVenta; // Actualizar por si cambió
         } else {
-            alert('Has alcanzado el límite de stock disponible.');
+            alert('Has alcanzado el límite de stock disponible en tu sucursal.');
             return;
         }
     } else {
+        if (limitStock <= 0) {
+            alert('Este producto no tiene stock disponible en tu sucursal.');
+            return;
+        }
         cart.push({
             producto_id: producto.id,
             nombre:      producto.nombre,
-            precio:      producto.precio,
+            precio:      precioVenta,
             imagen_url:  producto.imagen_url || null,
             cantidad:    1
         });
