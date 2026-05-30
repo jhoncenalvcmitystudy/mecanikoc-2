@@ -105,7 +105,7 @@ export const updateNav = () => {
                 <span style="display:flex; align-items:center; gap:0.5rem;">
                     <div class="avatar-circle">${user.nombre ? user.nombre.charAt(0).toUpperCase() : '👤'}</div>
                     ${user.nombre || 'Usuario'}
-                    <span class="badge-zoles">${user.zoles ?? 0} Zoles</span>
+                    <span class="badge-zoles">S/. ${user.soles ?? 0}</span>
                 </span>
             `;
         }
